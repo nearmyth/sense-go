@@ -17,6 +17,8 @@ var senseGo = require( './../lib/' );
 var Liftoff = require( 'liftoff' );
 var v8flags = require( 'v8flags' );
 var log = require( './log' );
+var tildify = require( 'tildify' );
+var archy = require('archy');
 
 var pkg = require( '../package' );
 var taskTree = require( './task-tree' );
@@ -82,7 +84,6 @@ function run ( env ) {
 
 	if ( versionFlag ) {
 		return log( 'sense-go CLI version: ', pkg.version );
-
 	}
 
 	console.log( '' ); // empty line
@@ -91,7 +92,11 @@ function run ( env ) {
 		var userConfig = senseGo.loadYml( path.join( process.cwd(), '.sense-go.yml' ) );
 		log( 'Using the .sense-go.yml file ...' );
 		senseGo.init( userConfig, function () {
-			senseGo.run( toRun );
+			if ( tasksFlag || simpleTasksFlag ) {
+				return logTasks( env, simpleTasksFlag, senseGo );
+			} else {
+				senseGo.run( toRun );
+			}
 		} );
 	} else if ( hasSenseGoJs ) {
 		log( 'Using the sense-go.js file ...' );
@@ -105,6 +110,32 @@ function run ( env ) {
 		} );
 	}
 
+}
+
+function logTasks ( env, isSimple, senseGoInst ) {
+	if ( isSimple ) {
+		logTasksSimple( senseGoInst );
+	} else {
+		logTasksTree( env, senseGoInst );
+	}
+}
+
+function logTasksSimple ( senseGoInst ) {
+	var keys = Object.keys( senseGoInst.tasks );
+	console.log( 'Tasks:' );
+	console.log( '' );
+	console.log( keys.join( '\n' ).trim() );
+}
+
+function logTasksTree ( env, senseGoInst ) {
+	var tree = taskTree( senseGoInst.tasks );
+	tree.label = 'Tasks: '; //'Tasks for ' + tildify( env.configPath );
+	archy( tree ).split( '\n' ).forEach( function ( v ) {
+		if ( v.trim().length === 0 ) {
+			return;
+		}
+		log( v );
+	} );
 }
 
 // fix stdout truncation on windows
